@@ -1,0 +1,95 @@
+name: crane-safety-local
+
+x-crane-runtime: &crane-runtime
+  - APP_ENV=production
+  - REPOSITORY_MODE=postgres
+  - DATABASE_URL=postgres://postgres@/postgres?host=/run/crane-database&sslmode=disable
+  - ACCESS_TOKEN_SECRET=local-compose-secret-change-before-deployment
+  - SIMULATOR_KEY=local-compose-simulator-key
+  - ALLOWED_ORIGINS=http://localhost:8080
+  - SEED_DEMO=true
+
+services:
+  database:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    command:
+      - postgres
+      - -c
+      - unix_socket_directories=/run/crane-database
+      - -c
+      - listen_addresses=
+      - -c
+      - timezone=UTC
+    healthcheck:
+      test: [CMD-SHELL, pg_isready --host=/run/crane-database --username=postgres --dbname=postgres]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - type: volume
+        source: crane-database
+        target: /var/lib/postgresql/data
+      - type: volume
+        source: crane-database-socket
+        target: /run/crane-database
+    stop_grace_period: 20s
+
+  schema:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      database:
+        condition: service_healthy
+        restart: true
+    environment: *crane-runtime
+    entrypoint: [/app/migrate, /app/migrations/000001_initial.up.sql]
+    volumes:
+      - type: volume
+        source: crane-database-socket
+        target: /run/crane-database
+    restart: "no"
+
+  safety-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      schema:
+        condition: service_completed_successfully
+    environment: *crane-runtime
+    entrypoint: [/app/server]
+    init: true
+    ports:
+      - name: http
+        target: 8080
+        published: "8080"
+        protocol: tcp
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    volumes:
+      - type: volume
+        source: crane-database-socket
+        target: /run/crane-database
+      - type: volume
+        source: crane-evidence
+        target: /app/var/files
+    healthcheck:
+      test: [CMD, wget, --quiet, --output-document=-, http://localhost:8080/readyz]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    security_opt: [no-new-privileges=true]
+    stop_grace_period: 20s
+    restart: unless-stopped
+
+volumes:
+  crane-database:
+    name: cry-086-database
+  crane-database-socket:
+    name: cry-086-database-socket
+  crane-evidence:
+    name: cry-086-evidence
