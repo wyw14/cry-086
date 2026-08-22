@@ -1,0 +1,1 @@
+<template><div class="content-page"><header class="page-header"><div><h2>监管与班次报告</h2><p>趋势、班次统计和证据留存</p></div><el-button type="primary">生成报告</el-button></header><el-table :data="[]"><el-table-column label="报告周期"/><el-table-column label="生成时间"/><el-table-column label="内容摘要"/><el-table-column label="留存期限"/></el-table><el-empty description="尚未生成报告" /></div></template>
