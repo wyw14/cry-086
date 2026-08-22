@@ -1,0 +1,14 @@
+DROP TABLE IF EXISTS file_metadata;
+DROP TABLE IF EXISTS outbox_messages;
+DROP TABLE IF EXISTS regulatory_reports;
+DROP TABLE IF EXISTS refresh_tokens;
+DROP TABLE IF EXISTS crane_stop_records;
+DROP TABLE IF EXISTS collision_risks;
+DROP TABLE IF EXISTS crane_poses;
+DROP TABLE IF EXISTS fleet_relations;
+DROP TABLE IF EXISTS audit_records;
+DROP TABLE IF EXISTS alarms;
+DROP TABLE IF EXISTS safety_clearance;
+DROP TABLE IF EXISTS safety_decisions;
+DROP TABLE IF EXISTS telemetry_events;
+DROP TABLE IF EXISTS domain_objects;
