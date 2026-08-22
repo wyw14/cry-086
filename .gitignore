@@ -1,0 +1,13 @@
+.env
+bin/
+dist/
+web/dist/
+web/node_modules/
+node_modules/
+var/
+coverage/
+*.out
+*.log
+.idea/
+.vscode/
+.DS_Store
