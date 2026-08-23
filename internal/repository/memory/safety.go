@@ -22,15 +22,8 @@ func (s *Store) FindConfig(ctx context.Context, id string, version int64) (safet
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	var value safety.Config
-	found := false
-	for _, candidate := range s.configs {
-		if candidate.ID == id && (!found || candidate.Version > value.Version) {
-			value = candidate
-			found = true
-		}
-	}
-	if !found {
+	value, ok := s.configs[configKey(id, version)]
+	if !ok {
 		return safety.Config{}, ErrNotFound
 	}
 	return value, nil

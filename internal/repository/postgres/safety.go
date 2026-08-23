@@ -13,7 +13,7 @@ import (
 
 func (s *Store) FindConfig(ctx context.Context, id string, version int64) (safety.Config, error) {
 	var payload []byte
-	err := s.pool.QueryRow(ctx, `SELECT payload FROM domain_objects WHERE kind='safety_config' AND id=$1 ORDER BY version DESC LIMIT 1`, id).Scan(&payload)
+	err := s.pool.QueryRow(ctx, `SELECT payload FROM domain_objects WHERE kind='safety_config' AND id=$1 AND version=$2 LIMIT 1`, id, version).Scan(&payload)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return safety.Config{}, ErrNotFound
 	}
