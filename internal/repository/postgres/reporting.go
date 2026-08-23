@@ -101,12 +101,12 @@ func (s *Store) StoreReport(ctx context.Context, value report.RegulatoryReport) 
 	return err
 }
 
-func (s *Store) ListReports(ctx context.Context, siteID, cursor string, limit int) ([]report.RegulatoryReport, string, error) {
+func (s *Store) ListReports(ctx context.Context, siteID, cursor string, limit int, now time.Time) ([]report.RegulatoryReport, string, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT payload FROM regulatory_reports
-		WHERE site_id=$1 AND ($2='' OR id < $2)
-		ORDER BY generated_at DESC,id DESC LIMIT $3
-	`, siteID, cursor, limit+1)
+		WHERE site_id=$1 AND ($2='' OR id < $2) AND retention_end > $3
+		ORDER BY generated_at DESC,id DESC LIMIT $4
+	`, siteID, cursor, now, limit+1)
 	if err != nil {
 		return nil, "", err
 	}

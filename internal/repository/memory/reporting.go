@@ -99,7 +99,7 @@ func (s *Store) StoreReport(ctx context.Context, value report.RegulatoryReport) 
 	return nil
 }
 
-func (s *Store) ListReports(ctx context.Context, siteID, cursor string, limit int) ([]report.RegulatoryReport, string, error) {
+func (s *Store) ListReports(ctx context.Context, siteID, cursor string, limit int, now time.Time) ([]report.RegulatoryReport, string, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, "", err
 	}
@@ -107,6 +107,13 @@ func (s *Store) ListReports(ctx context.Context, siteID, cursor string, limit in
 	values := append([]report.RegulatoryReport(nil), s.reports[siteID]...)
 	s.mu.RUnlock()
 	sort.SliceStable(values, func(i, j int) bool { return values[i].GeneratedAt.After(values[j].GeneratedAt) })
+	retained := values[:0]
+	for _, value := range values {
+		if value.RetentionEnd.After(now) {
+			retained = append(retained, value)
+		}
+	}
+	values = retained
 	start := 0
 	if cursor != "" {
 		for index, value := range values {

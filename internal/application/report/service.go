@@ -18,7 +18,7 @@ type Repository interface {
 	ShiftStatistics(context.Context, report.ShiftWindow) (report.ShiftStatistics, error)
 	Timeline(context.Context, string, time.Time, time.Time, int) ([]report.TimelineEvent, error)
 	StoreReport(context.Context, report.RegulatoryReport) error
-	ListReports(context.Context, string, string, int) ([]report.RegulatoryReport, string, error)
+	ListReports(context.Context, string, string, int, time.Time) ([]report.RegulatoryReport, string, error)
 }
 
 type IdentityProvider interface {
@@ -136,7 +136,7 @@ func (s *Service) authorizeReportPage(ctx context.Context, query reportPageQuery
 }
 
 func (s *Service) loadReportPage(ctx context.Context, query reportPageQuery) (reportPage, error) {
-	items, next, err := s.repository.ListReports(ctx, query.siteID, query.cursor, query.limit)
+	items, next, err := s.repository.ListReports(ctx, query.siteID, query.cursor, query.limit, s.clock.Now())
 	if err != nil {
 		return reportPage{}, err
 	}
