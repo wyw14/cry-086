@@ -107,13 +107,15 @@ func (s *Service) inspectSequence(ctx context.Context, state *ingestionState) er
 		return err
 	}
 	state.lastSequence = lastSequence
-	if lastSequence > 0 && state.raw.Sequence > lastSequence+s.outOfOrder {
-		_ = s.repository.StoreQuarantined(ctx, state.raw, "sequence outside reorder window")
-		return errors.New("telemetry outside reorder window")
-	}
-	if state.raw.Sequence < lastSequence {
-		state.quality = telemetry.QualityOutOfOrder
-		state.reason = "accepted within reorder window"
+	if lastSequence > 0 {
+		if state.raw.Sequence > lastSequence+s.outOfOrder || state.raw.Sequence < lastSequence-s.outOfOrder {
+			_ = s.repository.StoreQuarantined(ctx, state.raw, "sequence outside reorder window")
+			return errors.New("telemetry outside reorder window")
+		}
+		if state.raw.Sequence < lastSequence {
+			state.quality = telemetry.QualityOutOfOrder
+			state.reason = "accepted within reorder window"
+		}
 	}
 	return nil
 }
