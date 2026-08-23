@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -116,6 +117,9 @@ func (s *Service) loadRefreshState(ctx context.Context, credential refreshCreden
 	if stored.Digest == "" {
 		return refreshState{}, errors.New("invalid refresh token")
 	}
+	if subtle.ConstantTimeCompare([]byte(stored.Digest), []byte(credential.digest)) != 1 {
+		return refreshState{}, errors.New("invalid refresh token")
+	}
 	owner, err := s.repository.FindUser(ctx, stored.UserID)
 	if err != nil || !owner.Active {
 		return refreshState{}, errors.New("refresh token owner unavailable")
@@ -136,7 +140,7 @@ func (s *Service) Revoke(ctx context.Context, rawToken string) error {
 		return errors.New("invalid refresh token")
 	}
 	stored, err := s.repository.FindRefreshToken(ctx, id)
-	if err != nil || stored.Digest != digest(secret) {
+	if err != nil || subtle.ConstantTimeCompare([]byte(stored.Digest), []byte(digest(secret))) != 1 {
 		return errors.New("invalid refresh token")
 	}
 	version := stored.Version
