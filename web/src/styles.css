@@ -1,0 +1,48 @@
+:root { font-family: Inter, "Microsoft YaHei", sans-serif; color: #1d2329; background: #eef1f3; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; }
+button, input { font: inherit; }
+.app-shell { min-height: 100vh; display: grid; grid-template-columns: 224px minmax(0,1fr); }
+.app-sidebar { position: sticky; top: 0; height: 100vh; background: #171a1d; color: #fff; display: flex; flex-direction: column; padding: 20px 14px; }
+.app-brand { display: flex; align-items: center; gap: 12px; padding: 4px 8px 24px; border-bottom: 1px solid #32373c; }
+.app-brand strong { display: block; font-size: 17px; }
+.app-brand small { color: #8f99a2; font-size: 10px; }
+.brand-symbol { width: 34px; height: 34px; position: relative; border: 2px solid #e94f45; display: block; }
+.brand-symbol::before { content: ""; position: absolute; width: 2px; height: 26px; background: #fff; left: 15px; top: 3px; }
+.brand-symbol::after { content: ""; position: absolute; width: 25px; height: 2px; background: #fff; left: 5px; top: 8px; }
+.app-sidebar nav { display: grid; gap: 4px; margin-top: 18px; }
+.app-sidebar nav a, .logout { color: #aeb6bd; text-decoration: none; border: 0; background: transparent; display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-radius: 5px; cursor: pointer; }
+.app-sidebar nav a.router-link-active { color: #fff; background: #2e3439; border-left: 3px solid #e94f45; }
+.logout { margin-top: auto; width: 100%; }
+.app-main { min-width: 0; padding: 24px 28px 48px; }
+.page-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.page-header h2 { margin: 0 0 4px; font-size: 22px; letter-spacing: 0; }
+.page-header p { margin: 0; color: #68717a; font-size: 13px; }
+.summary-strip { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); background: #fff; border: 1px solid #dfe4e8; border-radius: 6px; margin-bottom: 16px; }
+.summary-strip > div { padding: 16px 20px; border-right: 1px solid #e5e9ec; }
+.summary-strip > div:last-child { border-right: 0; }
+.summary-strip span { display: block; color: #69727a; font-size: 12px; }
+.summary-strip strong { display: block; font-size: 28px; margin-top: 4px; }
+.summary-strip .danger { color: #c6322a; }.summary-strip .warning { color: #b86b00; }
+.crane-map { position: relative; height: 330px; overflow: hidden; background: #20252a; border: 1px solid #343b41; border-radius: 6px; margin-bottom: 16px; }
+.site-grid { position: absolute; inset: 0; background-image: linear-gradient(#343b41 1px,transparent 1px),linear-gradient(90deg,#343b41 1px,transparent 1px); background-size: 36px 36px; opacity: .55; }
+.crane-point { position: absolute; width: 90px; height: 90px; color: #fff; transform: translate(-50%,-50%); }
+.crane-point strong { position: absolute; top: 70px; left: 0; font-size: 12px; white-space: nowrap; }
+.crane-mast { position: absolute; width: 5px; height: 58px; background: #d6dce0; left: 42px; top: 11px; }
+.crane-jib { position: absolute; width: 76px; height: 4px; background: #d6dce0; left: 9px; top: 17px; transform: rotate(-8deg); transform-origin: center; }
+.point-critical .crane-mast,.point-critical .crane-jib,.point-alarm .crane-mast,.point-alarm .crane-jib { background: #ef5b51; }
+.point-warning .crane-mast,.point-warning .crane-jib { background: #e5a540; }.point-degraded .crane-mast,.point-degraded .crane-jib { background: #919ca5; }
+.map-legend { position: absolute; bottom: 14px; right: 16px; display: flex; gap: 16px; color: #9da6ae; font-size: 11px; }
+.crane-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+.crane-card { background: #fff; border: 1px solid #dfe4e8; border-radius: 6px; overflow: hidden; }
+.crane-card > header { display: flex; align-items: flex-start; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid #e9ecef; }
+.crane-card h3 { margin: 0 0 4px; font-size: 16px; }.crane-card p { margin: 0; color: #727b83; font-size: 12px; }
+.risk-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }.risk-badge i { width: 8px; height: 8px; border-radius: 50%; background: #30a46c; }.risk-critical i,.risk-alarm i { background: #d13c32; }.risk-warning i { background: #d88700; }.risk-degraded i { background: #7e8992; }
+.telemetry-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); padding: 12px 18px; gap: 12px; }.telemetry-grid span { display: block; color: #7b848c; font-size: 11px; }.telemetry-grid strong { display: block; margin-top: 3px; font-size: 14px; }
+.crane-card footer { padding: 10px 18px 14px; color: #626b73; font-size: 12px; display: flex; justify-content: space-between; }.crane-card footer strong { color: #c6322a; }
+.content-page { background: #fff; border: 1px solid #dfe4e8; border-radius: 6px; padding: 22px; min-height: calc(100vh - 48px); }
+.login-page { min-height: 100vh; display: grid; place-items: center; background: #20252a; padding: 24px; }
+.login-shell { width: min(380px,100%); background: #fff; border-radius: 6px; padding: 34px; border-top: 4px solid #e94f45; }.login-shell h1 { margin: 18px 0 4px; font-size: 24px; }.login-shell > p { color: #737c84; margin: 0 0 24px; }.login-shell .el-button { width: 100%; margin-top: 8px; }
+.brand-mark { position: relative; width: 58px; height: 42px; }.brand-mark .mast { position: absolute; width: 5px; height: 40px; background: #262c31; left: 17px; }.brand-mark .jib { position: absolute; width: 56px; height: 5px; background: #e94f45; left: 0; top: 7px; }
+@media (max-width: 920px) { .app-shell { grid-template-columns: 72px minmax(0,1fr); }.app-brand > div,.app-sidebar nav a:not(.router-link-active) { font-size: 0; }.app-sidebar nav a.router-link-active { font-size: 0; }.app-sidebar nav a .el-icon { font-size: 18px; }.crane-list { grid-template-columns: 1fr; }.summary-strip { grid-template-columns: repeat(2,1fr); }.summary-strip > div:nth-child(2) { border-right: 0; }.app-main { padding: 18px; } }
+@media (max-width: 560px) { .app-shell { display: block; }.app-sidebar { position: static; height: auto; flex-direction: row; align-items: center; padding: 10px; }.app-brand { border: 0; padding: 0; }.app-sidebar nav { margin: 0 0 0 auto; display: flex; }.app-sidebar .logout { width: auto; margin: 0; font-size: 0; }.summary-strip { grid-template-columns: 1fr 1fr; }.crane-map { height: 260px; }.telemetry-grid { grid-template-columns: repeat(2,1fr); }.page-header { align-items: flex-start; } }
