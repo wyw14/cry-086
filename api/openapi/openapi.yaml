@@ -1,0 +1,464 @@
+openapi: 3.0.3
+info:
+  title: Crane Guard Safety Monitoring API
+  version: 1.0.0
+  description: Local-first tower-crane telemetry, interlock response, maintenance evidence and regulatory reporting.
+servers:
+  - url: http://localhost:8080/api/v1
+tags:
+  - name: identity
+  - name: telemetry
+  - name: live-safety
+  - name: assurance
+  - name: evidence
+
+paths:
+  /auth/login:
+    post:
+      tags: [identity]
+      operationId: createOperatorSession
+      summary: Exchange local credentials for a short-lived session
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Access and refresh tokens issued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionEnvelope' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/refresh:
+    post:
+      tags: [identity]
+      operationId: rotateOperatorSession
+      summary: Revoke a refresh token and rotate the session
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshRequest' }
+      responses:
+        '200':
+          description: Rotated access and refresh tokens
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionEnvelope' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/revoke:
+    post:
+      tags: [identity]
+      operationId: revokeOperatorSession
+      summary: Revoke an active refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshRequest' }
+      responses:
+        '204': { description: Session revoked }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /telemetry:
+    post:
+      tags: [telemetry]
+      operationId: acceptSimulatorReading
+      summary: Normalize, deduplicate and evaluate one device reading
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/SimulatorKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TelemetryReading' }
+      responses:
+        '202':
+          description: Reading accepted or quarantined with an explicit quality decision
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TelemetryDecisionEnvelope' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/RejectedInput' }
+  /cranes/{crane_id}/snapshot:
+    get:
+      tags: [telemetry]
+      operationId: readCraneTelemetrySnapshot
+      summary: Read the latest normalized values and their quality state
+      parameters:
+        - $ref: '#/components/parameters/CraneID'
+      responses:
+        '200':
+          description: Latest crane sensor snapshot
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CraneSnapshotEnvelope' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /sites/{site_id}/dashboard:
+    get:
+      tags: [live-safety]
+      operationId: readSiteSafetyDashboard
+      summary: List current crane risk states for one authorized site
+      parameters:
+        - $ref: '#/components/parameters/SiteID'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/PageLimit'
+        - { in: query, name: sort, schema: { type: string, enum: [serial_number, risk, last_seen], default: risk } }
+        - { in: query, name: status, schema: { type: string } }
+        - { in: query, name: model_id, schema: { type: string } }
+        - { in: query, name: responsible_unit_id, schema: { type: string } }
+      responses:
+        '200':
+          description: Cursor-paginated live risk overview
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DashboardEnvelope' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /alarms/{alarm_id}/acknowledge:
+    post:
+      tags: [live-safety]
+      operationId: acknowledgeSafetyAlarm
+      parameters: [{ $ref: '#/components/parameters/AlarmID' }]
+      requestBody: { $ref: '#/components/requestBodies/ExpectedVersion' }
+      responses:
+        '200': { $ref: '#/components/responses/AlarmUpdated' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+  /alarms/{alarm_id}/recovery:
+    post:
+      tags: [live-safety]
+      operationId: beginSafetyRecoveryHold
+      parameters: [{ $ref: '#/components/parameters/AlarmID' }]
+      requestBody: { $ref: '#/components/requestBodies/ExpectedVersion' }
+      responses:
+        '200': { $ref: '#/components/responses/AlarmUpdated' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+  /alarms/{alarm_id}/resolve:
+    post:
+      tags: [live-safety]
+      operationId: resolveRecoveredSafetyAlarm
+      parameters: [{ $ref: '#/components/parameters/AlarmID' }]
+      responses:
+        '200': { $ref: '#/components/responses/AlarmUpdated' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+  /alarms/{alarm_id}/manual-takeover:
+    post:
+      tags: [live-safety]
+      operationId: recordManualSafetyTakeover
+      parameters: [{ $ref: '#/components/parameters/AlarmID' }]
+      responses:
+        '200': { $ref: '#/components/responses/AlarmUpdated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /sites/{site_id}/fleet/simulate:
+    post:
+      tags: [live-safety]
+      operationId: simulateSiteCollisionRisk
+      summary: Evaluate configured spatial relations using current local poses
+      parameters: [{ $ref: '#/components/parameters/SiteID' }]
+      responses:
+        '200':
+          description: Predicted pairwise collision risks
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CollisionRiskEnvelope' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /work-orders/{work_order_id}/complete:
+    post:
+      tags: [assurance]
+      operationId: completeCraneWorkOrder
+      parameters: [{ $ref: '#/components/parameters/WorkOrderID' }]
+      responses:
+        '200':
+          description: Work evidence accepted and stop review opened
+        '409': { $ref: '#/components/responses/StateConflict' }
+  /cranes/{crane_id}/resume:
+    post:
+      tags: [assurance]
+      operationId: authorizeCraneResume
+      parameters: [{ $ref: '#/components/parameters/CraneID' }]
+      responses:
+        '200': { description: Crane resumed after authorized review }
+        '409': { $ref: '#/components/responses/StateConflict' }
+  /sites/{site_id}/replay:
+    get:
+      tags: [assurance]
+      operationId: replayImmutableSiteEvents
+      parameters:
+        - $ref: '#/components/parameters/SiteID'
+        - { in: query, name: start, required: true, schema: { type: string, format: date-time } }
+        - { in: query, name: end, required: true, schema: { type: string, format: date-time } }
+      responses:
+        '200':
+          description: Time-ordered telemetry, alarm and audit evidence
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReplayEnvelope' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /sites/{site_id}/reports:
+    get:
+      tags: [assurance]
+      operationId: listRegulatoryReports
+      parameters:
+        - $ref: '#/components/parameters/SiteID'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/PageLimit'
+      responses:
+        '200':
+          description: Retained reports ordered by generation time
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportListEnvelope' }
+    post:
+      tags: [assurance]
+      operationId: generateRegulatoryReport
+      parameters: [{ $ref: '#/components/parameters/SiteID' }]
+      responses:
+        '201':
+          description: Immutable report generated with an evidence digest
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportEnvelope' }
+
+  /sites/{site_id}/files:
+    post:
+      tags: [evidence]
+      operationId: uploadSiteEvidence
+      parameters: [{ $ref: '#/components/parameters/SiteID' }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '201':
+          description: Validated site-scoped evidence metadata
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FileEnvelope' }
+        '422': { $ref: '#/components/responses/RejectedInput' }
+  /sites/{site_id}/files/{file_id}:
+    get:
+      tags: [evidence]
+      operationId: downloadSiteEvidence
+      parameters:
+        - $ref: '#/components/parameters/SiteID'
+        - $ref: '#/components/parameters/FileID'
+      responses:
+        '200':
+          description: Authorized evidence stream with its SHA-256 response header
+          headers:
+            X-Content-SHA256: { schema: { type: string } }
+          content:
+            application/octet-stream: { schema: { type: string, format: binary } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+components:
+  securitySchemes:
+    operatorToken: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    SimulatorKey: { in: header, name: X-Simulator-Key, required: true, schema: { type: string } }
+    SiteID: { in: path, name: site_id, required: true, schema: { type: string, minLength: 1 } }
+    CraneID: { in: path, name: crane_id, required: true, schema: { type: string, minLength: 1 } }
+    AlarmID: { in: path, name: alarm_id, required: true, schema: { type: string, minLength: 1 } }
+    WorkOrderID: { in: path, name: work_order_id, required: true, schema: { type: string, minLength: 1 } }
+    FileID: { in: path, name: file_id, required: true, schema: { type: string, minLength: 1 } }
+    Cursor: { in: query, name: cursor, schema: { type: string } }
+    PageLimit: { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+  requestBodies:
+    ExpectedVersion:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [version]
+            properties:
+              version: { type: integer, format: int64, minimum: 1 }
+  responses:
+    Unauthorized: { description: Missing, expired or revoked credential, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+    Forbidden: { description: Role or site ownership denied, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+    NotFound: { description: Resource does not exist in the authorized scope, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+    RejectedInput: { description: Input failed field or safety validation, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+    StateConflict: { description: State transition or optimistic version conflict, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+    AlarmUpdated: { description: Alarm lifecycle advanced and audited, content: { application/json: { schema: { $ref: '#/components/schemas/AlarmEnvelope' } } } }
+  schemas:
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string, minLength: 1 }
+        password: { type: string, format: password, minLength: 8, writeOnly: true }
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token: { type: string, minLength: 1, writeOnly: true }
+    SessionEnvelope:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          type: object
+          required: [access_token, refresh_token, expires_at]
+          properties:
+            access_token: { type: string, writeOnly: true }
+            refresh_token: { type: string, writeOnly: true }
+            expires_at: { type: string, format: date-time }
+        request_id: { type: string }
+    TelemetryReading:
+      type: object
+      required: [event_id, crane_id, sensor_id, kind, unit, observed_at, simulator_node]
+      properties:
+        event_id: { type: string }
+        crane_id: { type: string }
+        sensor_id: { type: string }
+        kind: { type: string, enum: [load, radius, height, slew_angle, wind_speed, limit_switch] }
+        value: { type: integer, format: int64 }
+        unit: { type: string }
+        sequence: { type: integer, format: int64, minimum: 0 }
+        observed_at: { type: string, format: date-time }
+        limit_engaged: { type: boolean }
+        simulator_node: { type: string }
+    TelemetryDecisionEnvelope:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            duplicate: { type: boolean }
+            quarantined: { type: boolean }
+            quality: { type: string, enum: [good, suspect, degraded, rejected] }
+            risk_level: { type: string, enum: [normal, warning, alarm, interlock, degraded] }
+        request_id: { type: string }
+    CraneSnapshotEnvelope:
+      type: object
+      properties:
+        data: { $ref: '#/components/schemas/CraneSnapshot' }
+        request_id: { type: string }
+    CraneSnapshot:
+      type: object
+      required: [crane_id, quality, readings]
+      properties:
+        crane_id: { type: string }
+        quality: { type: string, enum: [good, suspect, degraded, rejected] }
+        readings: { type: array, items: { $ref: '#/components/schemas/NormalizedReading' } }
+    NormalizedReading:
+      type: object
+      properties:
+        kind: { type: string }
+        value: { type: integer, format: int64 }
+        unit: { type: string }
+        observed_at: { type: string, format: date-time }
+        calibration_version: { type: integer, format: int64 }
+    DashboardEnvelope:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            site_id: { type: string }
+            cranes: { type: array, items: { $ref: '#/components/schemas/CraneRisk' } }
+            next_cursor: { type: string, nullable: true }
+        request_id: { type: string }
+    CraneRisk:
+      type: object
+      properties:
+        crane_id: { type: string }
+        serial_number: { type: string }
+        level: { type: string, enum: [normal, warning, alarm, interlock, degraded] }
+        last_seen_at: { type: string, format: date-time }
+    AlarmEnvelope:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            id: { type: string }
+            status: { type: string, enum: [open, acknowledged, recovering, resolved, manual_takeover] }
+            version: { type: integer, format: int64 }
+        request_id: { type: string }
+    CollisionRiskEnvelope:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              crane_a_id: { type: string }
+              crane_b_id: { type: string }
+              horizontal_clearance_mm: { type: integer, format: int64 }
+              vertical_clearance_mm: { type: integer, format: int64 }
+              critical: { type: boolean }
+    ReplayEnvelope:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              sequence: { type: integer, format: int64 }
+              kind: { type: string }
+              occurred_at: { type: string, format: date-time }
+              evidence_hash: { type: string }
+    ReportEnvelope:
+      type: object
+      properties:
+        data: { $ref: '#/components/schemas/RegulatoryReport' }
+        request_id: { type: string }
+    ReportListEnvelope:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/RegulatoryReport' } }
+        next_cursor: { type: string, nullable: true }
+        request_id: { type: string }
+    RegulatoryReport:
+      type: object
+      properties:
+        id: { type: string }
+        site_id: { type: string }
+        generated_at: { type: string, format: date-time }
+        retention_end: { type: string, format: date-time }
+        content_hash: { type: string }
+    FileEnvelope:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            id: { type: string }
+            site_id: { type: string }
+            name: { type: string }
+            mime: { type: string }
+            size_bytes: { type: integer, format: int64 }
+            checksum: { type: string }
+        request_id: { type: string }
+    FieldError:
+      type: object
+      required: [field, message]
+      properties:
+        field: { type: string }
+        message: { type: string }
+    ErrorResponse:
+      type: object
+      required: [code, message, field_errors, request_id]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        field_errors: { type: array, items: { $ref: '#/components/schemas/FieldError' } }
+        request_id: { type: string }
+
+security:
+  - operatorToken: []
